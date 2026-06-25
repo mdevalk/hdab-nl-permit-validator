@@ -30,7 +30,7 @@ const HDAB_ISSUERS = {
 
 const MOCK_PERMITS = [
   {
-    permitId: 'EHDB-2024-NL-00142',
+    permitId: 'EHDS-2024-NL-00142',
     status: 'valid',
     issuedAt: '2024-03-01T09:00:00Z',
     expiresAt: '2026-03-01T09:00:00Z',
@@ -55,7 +55,7 @@ const MOCK_PERMITS = [
     permitDocument: 'HDAB-NL-PERMIT-2024-00142.pdf',
   },
   {
-    permitId: 'EHDB-2023-NL-00089',
+    permitId: 'EHDS-2023-NL-00089',
     status: 'expired',
     issuedAt: '2023-01-15T10:30:00Z',
     expiresAt: '2025-01-15T10:30:00Z',
@@ -79,7 +79,7 @@ const MOCK_PERMITS = [
     permitDocument: 'HDAB-NL-PERMIT-2023-00089.pdf',
   },
   {
-    permitId: 'EHDB-2024-NL-00201',
+    permitId: 'EHDS-2024-NL-00201',
     status: 'revoked',
     issuedAt: '2024-06-01T08:00:00Z',
     expiresAt: '2026-06-01T08:00:00Z',
