@@ -181,7 +181,6 @@ export default function PermitCard({ permit, source, speView = false }) {
       boxShadow: 'var(--shadow-md)',
     }}>
       <SignatureBanner permit={permit} />
-      {permit.status === 'revoked' && <RevocationBanner permit={permit} />}
 
       <div style={{
         background: cfg.bg,
