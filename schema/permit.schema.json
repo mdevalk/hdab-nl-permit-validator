@@ -9,6 +9,7 @@
     "issuer", "dataUser", "dataHolder", "speOperator",
     "purpose", "legalBasis", "dataCategories", "datasets", "conditions"
   ],
+  "additionalProperties": false,
   "properties": {
     "permitId": {
       "type": "string",
@@ -49,6 +50,7 @@
       "type": "object",
       "description": "The Health Data Access Body that issued and signed this permit.",
       "required": ["authorityId", "name", "country", "organizationId", "kid", "algorithm", "signature"],
+      "additionalProperties": false,
       "properties": {
         "authorityId": {
           "type": "string",
@@ -85,13 +87,13 @@
           "description": "Base64url-encoded Ed25519 signature over the canonical payload (RFC 4648 §5, no padding).",
           "pattern": "^[A-Za-z0-9_-]+$"
         }
-      },
-      "additionalProperties": false
+      }
     },
     "dataUser": {
       "type": "object",
       "description": "The organisation that will access and process the health data.",
       "required": ["name", "organizationId", "country"],
+      "additionalProperties": false,
       "properties": {
         "name": {
           "type": "string",
@@ -106,13 +108,13 @@
           "description": "ISO 3166-1 alpha-2 country of registration.",
           "pattern": "^[A-Z]{2}$"
         }
-      },
-      "additionalProperties": false
+      }
     },
     "dataHolder": {
       "type": "object",
       "description": "The organisation that holds the source health data.",
       "required": ["name", "organizationId", "country"],
+      "additionalProperties": false,
       "properties": {
         "name": {
           "type": "string",
@@ -127,13 +129,13 @@
           "description": "ISO 3166-1 alpha-2 country of registration.",
           "pattern": "^[A-Z]{2}$"
         }
-      },
-      "additionalProperties": false
+      }
     },
     "speOperator": {
       "type": "object",
       "description": "The organisation operating the Secure Processing Environment (SPE) where the data is processed.",
       "required": ["name", "organizationId", "speType"],
+      "additionalProperties": false,
       "properties": {
         "name": {
           "type": "string",
@@ -148,8 +150,7 @@
           "description": "Type of Secure Processing Environment.",
           "enum": ["Remote Access SPE", "On-site SPE", "Federated SPE"]
         }
-      },
-      "additionalProperties": false
+      }
     },
     "purpose": {
       "type": "string",
@@ -180,6 +181,7 @@
       "items": {
         "type": "object",
         "required": ["id", "name"],
+        "additionalProperties": false,
         "properties": {
           "id": {
             "type": "string",
@@ -189,8 +191,7 @@
             "type": "string",
             "description": "Human-readable dataset name."
           }
-        },
-        "additionalProperties": false
+        }
       }
     },
     "conditions": {
@@ -201,12 +202,5 @@
         "type": "string"
       }
     }
-  },
-  "if": {
-    "properties": { "status": { "const": "revoked" } }
-  },
-  "then": {
-    "required": ["revokedAt", "revocationReason"]
-  },
-  "additionalProperties": false
+  }
 }
