@@ -1,0 +1,14 @@
+{
+  "keys": [
+    {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "kid": "hdab-nl-signing-key-2025-v1",
+      "use": "sig",
+      "alg": "Ed25519",
+      "ext": true,
+      "key_ops": ["verify"],
+      "x": "Oob343RfMvsZmcqTtSd3KOom-KrpLp6yRm86K2sh_aQ"
+    }
+  ]
+}
