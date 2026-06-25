@@ -4,6 +4,7 @@
 const JWKS_URL      = 'https://raw.githubusercontent.com/mdevalk/hdab-nl-permit-generator/claude/amazing-dijkstra-fysn0n/.well-known/jwks.json'
 const JWKS_CACHE_KEY = 'hdab_jwks_cache'
 const JWKS_CACHE_TTL = 60 * 60 * 1000 // 1 hour
+const ED25519        = { name: 'Ed25519' }
 
 const BUNDLED_PUBLIC_KEY = {
   kty: 'OKP', crv: 'Ed25519', alg: 'Ed25519',
@@ -151,11 +152,11 @@ export async function verifySignature(permit) {
     const keyJwk   = keys.find(k => k.kid === permit.issuer.keyId)
     if (!keyJwk) return { valid: false, issuer: issuerInfo || null, keyId: permit.issuer.keyId, algorithm: 'Ed25519' }
 
-    const publicKey = await crypto.subtle.importKey('jwk', keyJwk, 'Ed25519', false, ['verify'])
+    const publicKey = await crypto.subtle.importKey('jwk', keyJwk, ED25519, false, ['verify'])
     const encoded   = new TextEncoder().encode(JSON.stringify(canonicalPayload(permit)))
     const b64       = permit.issuer.signature.replace(/-/g, '+').replace(/_/g, '/')
     const sigBytes  = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
-    const valid     = await crypto.subtle.verify('Ed25519', publicKey, sigBytes, encoded)
+    const valid     = await crypto.subtle.verify(ED25519, publicKey, sigBytes, encoded)
 
     return { valid, issuer: issuerInfo || null, keyId: keyJwk.kid, algorithm: 'Ed25519' }
   } catch {
