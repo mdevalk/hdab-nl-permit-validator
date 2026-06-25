@@ -1,7 +1,7 @@
 // Real Ed25519 verification against the HDAB-NL JWKS endpoint.
 // Falls back to the bundled public key when offline.
 
-const JWKS_URL      = 'https://raw.githubusercontent.com/mdevalk/hdab-nl-permit-validator/main/.well-known/jwks.json'
+const JWKS_URL      = 'https://raw.githubusercontent.com/mdevalk/hdab-nl-permit-generator/claude/amazing-dijkstra-fysn0n/.well-known/jwks.json'
 const JWKS_CACHE_KEY = 'hdab_jwks_cache'
 const JWKS_CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
