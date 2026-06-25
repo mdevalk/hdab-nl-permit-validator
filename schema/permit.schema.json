@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/mdevalk/hdab-nl-permit-generator/schema/permit.schema.json",
+  "$id": "urn:hdab:permit:1.0",
   "title": "EHDS Permit",
   "description": "A permit issued by an EHDS Health Data Access Body (HDAB) granting access to health data for secondary use.",
   "type": "object",
