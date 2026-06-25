@@ -104,8 +104,8 @@ function SignatureBanner({ permit }) {
       }
       right={issuer && (
         <>
-          <div><strong>Key ID:</strong> {state.keyId}</div>
-          <div><strong>Algorithm:</strong> {state.algorithm}</div>
+          <div><strong>kid:</strong> {state.kid}</div>
+          <div><strong>alg:</strong> {state.algorithm}</div>
           <div><strong>Org ID:</strong> {issuer.organizationId}</div>
         </>
       )}
