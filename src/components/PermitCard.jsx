@@ -168,7 +168,7 @@ function SourceBadge({ source }) {
   )
 }
 
-export default function PermitCard({ permit, source }) {
+export default function PermitCard({ permit, source, speView = false }) {
   const cfg = STATUS_CONFIG[permit.status] || STATUS_CONFIG.expired
   const StatusIcon = cfg.icon
 
@@ -258,11 +258,17 @@ export default function PermitCard({ permit, source }) {
           ))}
         </Section>
 
-        <Section title="Conditions" icon={AlertTriangle}>
-          <ol style={{ paddingLeft: 18, fontSize: 13, lineHeight: 1.7, color: 'var(--color-text)' }}>
-            {permit.conditions.map((c, i) => <li key={i}>{c}</li>)}
-          </ol>
-        </Section>
+        {speView ? (
+          <Section title="Requested SPE Type" icon={Shield}>
+            <Field label="SPE type" value={permit.speOperator.speType || '—'} />
+          </Section>
+        ) : (
+          <Section title="Conditions" icon={AlertTriangle}>
+            <ol style={{ paddingLeft: 18, fontSize: 13, lineHeight: 1.7, color: 'var(--color-text)' }}>
+              {permit.conditions.map((c, i) => <li key={i}>{c}</li>)}
+            </ol>
+          </Section>
+        )}
       </div>
     </div>
   )

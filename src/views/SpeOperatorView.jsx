@@ -108,7 +108,7 @@ export default function SpeOperatorView() {
                             color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Permit Details
               </div>
-              <PermitCard permit={selected} />
+              <PermitCard permit={selected} speView />
             </div>
           )}
         </div>
