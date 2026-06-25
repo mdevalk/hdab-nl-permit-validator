@@ -18,13 +18,13 @@ const HDAB_ISSUERS = {
     name: 'Health Data Access Body — Netherlands',
     country: 'NL',
     organizationId: 'NL-OIN-00000000008765432000',
-    publicKeyId: 'hdab-nl-signing-key-2025-v1',
+    kid: 'hdab-nl-signing-key-2025-v1',
   },
   'HDAB-DE': {
     name: 'Gesundheitsdatenzugangsorganisation — Deutschland',
     country: 'DE',
     organizationId: 'DE-HRB-00000000-HDAB',
-    publicKeyId: 'hdab-de-signing-key-2025-v1',
+    kid: 'hdab-de-signing-key-2025-v1',
   },
 }
 
@@ -36,7 +36,7 @@ const MOCK_PERMITS = [
     expiresAt: '2026-03-01T09:00:00Z',
     issuer: {
       authorityId: 'HDAB-NL',
-      keyId: 'hdab-nl-signing-key-2025-v1',
+      kid: 'hdab-nl-signing-key-2025-v1',
       algorithm: 'Ed25519',
       signature: '7QZ6Hhs0lKFy3ocnJhSpOFdpVnabR3Ls5zFtRzgcDCV_EGIiQuONdTOLIX0-q9nmF4LvUqtcZm7btA-_FNfhDA',
     },
@@ -61,7 +61,7 @@ const MOCK_PERMITS = [
     expiresAt: '2025-01-15T10:30:00Z',
     issuer: {
       authorityId: 'HDAB-NL',
-      keyId: 'hdab-nl-signing-key-2025-v1',
+      kid: 'hdab-nl-signing-key-2025-v1',
       algorithm: 'Ed25519',
       signature: 'omwz2EoZHRgtFBPRuV9qUnlcK3977smKtrL5TfhvV2cXgjABe090VMzm-K4nsXW6UlicYXUqeQ__nbanAj5MDg',
     },
@@ -87,7 +87,7 @@ const MOCK_PERMITS = [
     revocationReason: 'Data user failed to comply with output checking procedures',
     issuer: {
       authorityId: 'HDAB-NL',
-      keyId: 'hdab-nl-signing-key-2025-v1',
+      kid: 'hdab-nl-signing-key-2025-v1',
       algorithm: 'Ed25519',
       signature: 'HB_BjrsIE5fkT4lXebmd2zEVRNgORzn_gGPEzD_S7DKXL2zfUw6RVowj6t9BdgW2nbiT-ZTessMEyMu4iwqIDQ',
     },
@@ -109,7 +109,7 @@ function canonicalPayload(permit) {
     permitId:       permit.permitId,
     issuedAt:       permit.issuedAt,
     expiresAt:      permit.expiresAt,
-    issuerKeyId:    permit.issuer.keyId,
+    issuerKid:      permit.issuer.kid,
     dataUser:       permit.dataUser,
     dataHolder:     permit.dataHolder,
     speOperator:    permit.speOperator,
@@ -144,13 +144,13 @@ export async function verifySignature(permit) {
   const issuerInfo = HDAB_ISSUERS[permit.issuer?.authorityId]
 
   if (!permit.issuer?.signature) {
-    return { valid: false, issuer: issuerInfo || null, keyId: permit.issuer?.keyId || null, algorithm: 'Ed25519' }
+    return { valid: false, issuer: issuerInfo || null, kid: permit.issuer?.kid || null, algorithm: 'Ed25519' }
   }
 
   try {
-    const keys     = await fetchJwks()
-    const keyJwk   = keys.find(k => k.kid === permit.issuer.keyId)
-    if (!keyJwk) return { valid: false, issuer: issuerInfo || null, keyId: permit.issuer.keyId, algorithm: 'Ed25519' }
+    const keys   = await fetchJwks()
+    const keyJwk = keys.find(k => k.kid === permit.issuer.kid)
+    if (!keyJwk) return { valid: false, issuer: issuerInfo || null, kid: permit.issuer.kid, algorithm: 'Ed25519' }
 
     const publicKey = await crypto.subtle.importKey('jwk', keyJwk, ED25519, false, ['verify'])
     const encoded   = new TextEncoder().encode(JSON.stringify(canonicalPayload(permit)))
@@ -158,9 +158,9 @@ export async function verifySignature(permit) {
     const sigBytes  = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
     const valid     = await crypto.subtle.verify(ED25519, publicKey, sigBytes, encoded)
 
-    return { valid, issuer: issuerInfo || null, keyId: keyJwk.kid, algorithm: 'Ed25519' }
+    return { valid, issuer: issuerInfo || null, kid: keyJwk.kid, algorithm: 'Ed25519' }
   } catch {
-    return { valid: false, issuer: issuerInfo || null, keyId: permit.issuer?.keyId, algorithm: 'Ed25519' }
+    return { valid: false, issuer: issuerInfo || null, kid: permit.issuer?.kid, algorithm: 'Ed25519' }
   }
 }
 
