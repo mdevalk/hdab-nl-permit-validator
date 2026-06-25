@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { CheckCircle, XCircle, AlertTriangle, Building2, User, Shield, FileText, Tag, BadgeCheck, ShieldAlert, Loader, Ban, Globe, FolderOpen, KeyRound } from 'lucide-react'
+import { CheckCircle, XCircle, AlertTriangle, Building2, User, Shield, FileText, Tag, BadgeCheck, ShieldAlert, Loader, Ban, Globe, FolderOpen } from 'lucide-react'
 import { verifySignature, checkRevocation } from '../services/permitService.js'
 
 const STATUS_CONFIG = {
@@ -22,11 +22,11 @@ function Section({ title, icon: Icon, children }) {
   )
 }
 
-function Field({ label, value, mono }) {
+function Field({ label, value }) {
   return (
     <div style={{ marginBottom: 6 }}>
       <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{label}: </span>
-      <span style={{ fontSize: 13, fontFamily: mono ? 'monospace' : 'inherit', wordBreak: 'break-all' }}>{value}</span>
+      <span style={{ fontSize: 13 }}>{value}</span>
     </div>
   )
 }
@@ -269,26 +269,6 @@ export default function PermitCard({ permit, source, speView = false }) {
             </ol>
           </Section>
         )}
-
-        <Section title="Cryptographic Signature" icon={KeyRound}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 32px', marginBottom: 8 }}>
-            <Field label="Authority"  value={permit.issuer?.authorityId} />
-            <Field label="Algorithm"  value={permit.issuer?.algorithm} />
-            <Field label="Key ID"     value={permit.issuer?.keyId} mono />
-            <Field label="Org ID"     value={permit.issuer?.organizationId} />
-          </div>
-          <div style={{ marginBottom: 6 }}>
-            <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Signature: </span>
-          </div>
-          <div style={{
-            background: 'var(--color-bg)', border: '1px solid var(--color-border)',
-            borderRadius: 6, padding: '8px 10px',
-            fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all',
-            color: 'var(--color-text)', lineHeight: 1.5,
-          }}>
-            {permit.issuer?.signature || '—'}
-          </div>
-        </Section>
       </div>
     </div>
   )
