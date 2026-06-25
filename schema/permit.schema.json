@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mdevalk/hdab-nl-permit-generator/schema/permit.schema.json",
+  "title": "EHDS Permit",
+  "description": "A permit issued by an EHDS Health Data Access Body (HDAB) granting access to health data for secondary use.",
+  "type": "object",
+  "required": [
+    "permitId", "status", "issuedAt", "expiresAt",
+    "issuer", "dataUser", "dataHolder", "speOperator",
+    "purpose", "legalBasis", "dataCategories", "datasets", "conditions"
+  ],
+  "properties": {
+    "permitId": {
+      "type": "string",
+      "description": "Unique permit identifier.",
+      "pattern": "^EHDS-[0-9]{4}-[A-Z]{2}-[0-9]+$",
+      "examples": ["EHDS-2024-NL-00142"]
+    },
+    "status": {
+      "type": "string",
+      "description": "Lifecycle status of the permit.",
+      "enum": ["valid", "expired", "revoked"]
+    },
+    "issuedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of when the permit was signed and issued."
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of when the permit expires."
+    },
+    "revokedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of revocation. Present only when status is 'revoked'."
+    },
+    "revocationReason": {
+      "type": "string",
+      "description": "Human-readable reason for revocation. Present only when status is 'revoked'."
+    },
+    "permitDocument": {
+      "type": "string",
+      "description": "Filename of the accompanying PDF permit document.",
+      "examples": ["HDAB-NL-PERMIT-2024-00142.pdf"]
+    },
+    "issuer": {
+      "type": "object",
+      "description": "The Health Data Access Body that issued and signed this permit.",
+      "required": ["authorityId", "name", "country", "organizationId", "kid", "algorithm", "signature"],
+      "properties": {
+        "authorityId": {
+          "type": "string",
+          "description": "Short identifier of the issuing HDAB.",
+          "examples": ["HDAB-NL", "HDAB-DE"]
+        },
+        "name": {
+          "type": "string",
+          "description": "Full legal name of the issuing authority.",
+          "examples": ["Health Data Access Body — Netherlands"]
+        },
+        "country": {
+          "type": "string",
+          "description": "ISO 3166-1 alpha-2 country code of the issuing authority.",
+          "pattern": "^[A-Z]{2}$"
+        },
+        "organizationId": {
+          "type": "string",
+          "description": "Official organisation identifier of the issuing authority.",
+          "examples": ["NL-OIN-00000000008765432000"]
+        },
+        "kid": {
+          "type": "string",
+          "description": "RFC 7517 Key ID. References the matching key in the issuer's JWKS endpoint.",
+          "examples": ["hdab-nl-signing-key-2025-v1"]
+        },
+        "algorithm": {
+          "type": "string",
+          "description": "Cryptographic algorithm used to produce the signature.",
+          "enum": ["Ed25519"]
+        },
+        "signature": {
+          "type": "string",
+          "description": "Base64url-encoded Ed25519 signature over the canonical payload (RFC 4648 §5, no padding).",
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "dataUser": {
+      "type": "object",
+      "description": "The organisation that will access and process the health data.",
+      "required": ["name", "organizationId", "country"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full legal name of the data user organisation."
+        },
+        "organizationId": {
+          "type": "string",
+          "description": "Official organisation identifier (e.g. KVK, OIN, HRB)."
+        },
+        "country": {
+          "type": "string",
+          "description": "ISO 3166-1 alpha-2 country of registration.",
+          "pattern": "^[A-Z]{2}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "dataHolder": {
+      "type": "object",
+      "description": "The organisation that holds the source health data.",
+      "required": ["name", "organizationId", "country"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full legal name of the data holding organisation."
+        },
+        "organizationId": {
+          "type": "string",
+          "description": "Official organisation identifier."
+        },
+        "country": {
+          "type": "string",
+          "description": "ISO 3166-1 alpha-2 country of registration.",
+          "pattern": "^[A-Z]{2}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "speOperator": {
+      "type": "object",
+      "description": "The organisation operating the Secure Processing Environment (SPE) where the data is processed.",
+      "required": ["name", "organizationId", "speType"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full legal name of the SPE operator."
+        },
+        "organizationId": {
+          "type": "string",
+          "description": "Official organisation identifier."
+        },
+        "speType": {
+          "type": "string",
+          "description": "Type of Secure Processing Environment.",
+          "enum": ["Remote Access SPE", "On-site SPE", "Federated SPE"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "purpose": {
+      "type": "string",
+      "description": "Free-text description of the research or secondary use purpose."
+    },
+    "legalBasis": {
+      "type": "string",
+      "description": "The EHDS legal basis under which access is granted.",
+      "enum": [
+        "EHDS Article 54(1)(a) — Scientific research",
+        "EHDS Article 54(1)(b) — Commercial research",
+        "EHDS Article 54(1)(c) — Policy making",
+        "EHDS Article 54(1)(d) — Education and training"
+      ]
+    },
+    "dataCategories": {
+      "type": "array",
+      "description": "Health data categories covered by this permit.",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "datasets": {
+      "type": "array",
+      "description": "Specific datasets covered by this permit.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Dataset identifier as registered with the data holder."
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable dataset name."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "conditions": {
+      "type": "array",
+      "description": "Conditions the data user must comply with during the permit period.",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "if": {
+    "properties": { "status": { "const": "revoked" } }
+  },
+  "then": {
+    "required": ["revokedAt", "revocationReason"]
+  },
+  "additionalProperties": false
+}
