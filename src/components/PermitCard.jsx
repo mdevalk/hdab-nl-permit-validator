@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { CheckCircle, XCircle, AlertTriangle, Building2, User, Shield, FileText, Tag, BadgeCheck, ShieldAlert, Loader, Ban } from 'lucide-react'
+import { CheckCircle, XCircle, AlertTriangle, Building2, User, Shield, FileText, Tag, BadgeCheck, ShieldAlert, Loader, Ban, Globe, FolderOpen } from 'lucide-react'
 import { verifySignature, checkRevocation } from '../services/permitService.js'
 
 const STATUS_CONFIG = {
@@ -149,7 +149,26 @@ function RevocationBanner({ permit }) {
   )
 }
 
-export default function PermitCard({ permit }) {
+function SourceBadge({ source }) {
+  if (!source) return null
+  const isFile = source.type === 'file'
+  const Icon = isFile ? FolderOpen : Globe
+  const label = isFile ? `Uploaded: ${source.filename}` : 'HDAB Registry'
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+      background: isFile ? '#f0f4ff' : '#f0fdf4',
+      color: isFile ? '#3b4ec8' : '#0e7a57',
+      border: `1px solid ${isFile ? '#c7d2fe' : '#a7f3d0'}`,
+    }}>
+      <Icon size={11} />
+      {label}
+    </div>
+  )
+}
+
+export default function PermitCard({ permit, source }) {
   const cfg = STATUS_CONFIG[permit.status] || STATUS_CONFIG.expired
   const StatusIcon = cfg.icon
 
@@ -184,6 +203,7 @@ export default function PermitCard({ permit }) {
           </div>
         </div>
         <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--color-text-muted)' }}>
+          {source && <div style={{ marginBottom: 6 }}><SourceBadge source={source} /></div>}
           <div>Issued: {formatDate(permit.issuedAt)}</div>
           <div>Expires: {formatDate(permit.expiresAt)}</div>
           {permit.revokedAt && <div style={{ color: cfg.color, fontWeight: 600 }}>Revoked: {formatDate(permit.revokedAt)}</div>}

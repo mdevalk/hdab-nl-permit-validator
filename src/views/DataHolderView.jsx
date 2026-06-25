@@ -5,6 +5,12 @@ import PermitCard from '../components/PermitCard.jsx'
 
 export default function DataHolderView() {
   const [permit, setPermit] = useState(null)
+  const [source, setSource] = useState(null)
+
+  function handleResult(permit, src) {
+    setPermit(permit)
+    setSource(src)
+  }
 
   return (
     <div>
@@ -23,7 +29,7 @@ export default function DataHolderView() {
                     border: '1px solid var(--color-border)', padding: 20, marginBottom: 24,
                     boxShadow: 'var(--shadow)' }}>
         <div style={{ fontWeight: 600, marginBottom: 12 }}>Look up a permit</div>
-        <PermitLookup onResult={setPermit} placeholder="Enter permit ID provided by data user…" />
+        <PermitLookup onResult={handleResult} placeholder="Enter permit ID provided by data user…" />
       </div>
 
       {permit && (
@@ -34,7 +40,7 @@ export default function DataHolderView() {
                           color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Full Permit Details
             </div>
-            <PermitCard permit={permit} />
+            <PermitCard permit={permit} source={source} />
           </div>
         </>
       )}

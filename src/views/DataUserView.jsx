@@ -5,6 +5,12 @@ import PermitCard from '../components/PermitCard.jsx'
 
 export default function DataUserView() {
   const [permit, setPermit] = useState(null)
+  const [source, setSource] = useState(null)
+
+  function handleResult(permit, src) {
+    setPermit(permit)
+    setSource(src)
+  }
 
   function handleExport() {
     if (!permit) return
@@ -35,7 +41,7 @@ export default function DataUserView() {
                     border: '1px solid var(--color-border)', padding: 20, marginBottom: 24,
                     boxShadow: 'var(--shadow)' }}>
         <div style={{ fontWeight: 600, marginBottom: 12 }}>Enter your permit ID</div>
-        <PermitLookup onResult={setPermit} placeholder="Your permit ID (e.g. EHDB-2024-NL-00142)…" />
+        <PermitLookup onResult={handleResult} placeholder="Your permit ID (e.g. EHDB-2024-NL-00142)…" />
       </div>
 
       {permit && (
@@ -46,7 +52,7 @@ export default function DataUserView() {
               navigator.clipboard?.writeText(permit.permitId)
             }} />
           </div>
-          <PermitCard permit={permit} />
+          <PermitCard permit={permit} source={source} />
         </>
       )}
     </div>

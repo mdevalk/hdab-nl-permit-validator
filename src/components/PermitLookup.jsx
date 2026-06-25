@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Search, ChevronDown } from 'lucide-react'
+import React, { useRef, useState } from 'react'
+import { Search, ChevronDown, Upload } from 'lucide-react'
 import { lookupPermit, getMockPermitIds } from '../services/permitService.js'
 
 export default function PermitLookup({ onResult, placeholder = 'Enter permit IDâ€¦' }) {
@@ -7,6 +7,7 @@ export default function PermitLookup({ onResult, placeholder = 'Enter permit IDâ
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [showExamples, setShowExamples] = useState(false)
+  const fileInputRef = useRef(null)
   const examples = getMockPermitIds()
 
   async function handleSubmit(e) {
@@ -18,15 +19,36 @@ export default function PermitLookup({ onResult, placeholder = 'Enter permit IDâ
       const result = await lookupPermit(value)
       if (!result.found) {
         setError(`No permit found for ID "${value.trim()}"`)
-        onResult(null)
+        onResult(null, null)
       } else {
-        onResult(result.permit)
+        onResult(result.permit, { type: 'registry' })
       }
     } catch {
       setError('Lookup failed. Please try again.')
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleFileChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setError(null)
+    const reader = new FileReader()
+    reader.onload = (evt) => {
+      try {
+        const permit = JSON.parse(evt.target.result)
+        if (!permit.permitId) throw new Error('Missing permitId field')
+        onResult(permit, { type: 'file', filename: file.name })
+        setValue('')
+      } catch {
+        setError('Could not parse permit file. Expected a JSON file with a permitId field.')
+        onResult(null, null)
+      }
+    }
+    reader.readAsText(file)
+    // Reset so the same file can be re-selected
+    e.target.value = ''
   }
 
   function useExample(id) {
@@ -74,6 +96,36 @@ export default function PermitLookup({ onResult, placeholder = 'Enter permit IDâ
           <Search size={15} />
           {loading ? 'Looking upâ€¦' : 'Validate'}
         </button>
+        <button
+          type="button"
+          title="Load permit from JSON file"
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            border: '1.5px solid var(--color-border)',
+            background: 'var(--color-surface)',
+            color: 'var(--color-text)',
+            padding: '10px 14px',
+            borderRadius: 8,
+            fontSize: 14,
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'var(--color-surface)'}
+        >
+          <Upload size={15} />
+          Upload
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+        />
       </form>
 
       <button
