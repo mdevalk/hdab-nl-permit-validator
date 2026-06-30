@@ -1,10 +1,11 @@
 // Real Ed25519 verification against the HDAB-NL JWKS endpoint.
 // Falls back to the bundled public key when offline.
 
-const JWKS_URL      = 'https://raw.githubusercontent.com/mdevalk/hdab-nl-permit-generator/claude/amazing-dijkstra-fysn0n/.well-known/jwks.json'
+import * as ed from '@noble/ed25519'
+
+const JWKS_URL       = 'https://raw.githubusercontent.com/mdevalk/hdab-nl-permit-generator/claude/amazing-dijkstra-fysn0n/.well-known/jwks.json'
 const JWKS_CACHE_KEY = 'hdab_jwks_cache'
 const JWKS_CACHE_TTL = 60 * 60 * 1000 // 1 hour
-const ED25519        = { name: 'Ed25519' }
 
 const BUNDLED_PUBLIC_KEY = {
   kty: 'OKP', crv: 'Ed25519', alg: 'Ed25519',
@@ -121,6 +122,11 @@ function canonicalPayload(permit) {
   }
 }
 
+function fromBase64Url(b64) {
+  const b64std = b64.replace(/-/g, '+').replace(/_/g, '/')
+  return Uint8Array.from(atob(b64std), c => c.charCodeAt(0))
+}
+
 async function fetchJwks() {
   try {
     const cached = JSON.parse(localStorage.getItem(JWKS_CACHE_KEY) || 'null')
@@ -152,11 +158,10 @@ export async function verifySignature(permit) {
     const keyJwk = keys.find(k => k.kid === permit.issuer.kid)
     if (!keyJwk) return { valid: false, issuer: issuerInfo || null, kid: permit.issuer.kid, algorithm: 'Ed25519' }
 
-    const publicKey = await crypto.subtle.importKey('jwk', keyJwk, ED25519, false, ['verify'])
-    const encoded   = new TextEncoder().encode(JSON.stringify(canonicalPayload(permit)))
-    const b64       = permit.issuer.signature.replace(/-/g, '+').replace(/_/g, '/')
-    const sigBytes  = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
-    const valid     = await crypto.subtle.verify(ED25519, publicKey, sigBytes, encoded)
+    const publicKeyBytes = fromBase64Url(keyJwk.x)
+    const encoded        = new TextEncoder().encode(JSON.stringify(canonicalPayload(permit)))
+    const sigBytes       = fromBase64Url(permit.issuer.signature)
+    const valid          = await ed.verify(sigBytes, encoded, publicKeyBytes)
 
     return { valid, issuer: issuerInfo || null, kid: keyJwk.kid, algorithm: 'Ed25519' }
   } catch {
