@@ -6,6 +6,7 @@ const STATUS_CONFIG = {
   valid:   { icon: CheckCircle,   color: 'var(--color-valid)',   bg: 'var(--color-valid-bg)',   label: 'Valid' },
   expired: { icon: AlertTriangle, color: 'var(--color-expired)', bg: 'var(--color-expired-bg)', label: 'Expired' },
   revoked: { icon: XCircle,       color: 'var(--color-revoked)', bg: 'var(--color-revoked-bg)', label: 'Revoked' },
+  forged:  { icon: ShieldAlert,   color: 'var(--color-revoked)', bg: '#fff5f5',                 label: 'Signature Invalid' },
 }
 
 function Section({ title, icon: Icon, children }) {
@@ -64,12 +65,15 @@ function CheckRow({ loading, loadingText, icon: Icon, iconColor, bg, borderColor
   )
 }
 
-function SignatureBanner({ permit }) {
+function SignatureBanner({ permit, onResult }) {
   const [state, setState] = useState({ loading: true })
 
   useEffect(() => {
     setState({ loading: true })
-    verifySignature(permit).then(result => setState({ loading: false, ...result }))
+    verifySignature(permit).then(result => {
+      setState({ loading: false, ...result })
+      onResult(result)
+    })
   }, [permit.permitId])
 
   if (state.loading) {
@@ -169,7 +173,11 @@ function SourceBadge({ source }) {
 }
 
 export default function PermitCard({ permit, source, speView = false }) {
-  const cfg = STATUS_CONFIG[permit.status] || STATUS_CONFIG.expired
+  const [sigValid, setSigValid] = useState(null)
+
+  // When the signature is invalid, treat the permit as forged regardless of its status field.
+  const effectiveStatus = sigValid === false ? 'forged' : permit.status
+  const cfg = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.expired
   const StatusIcon = cfg.icon
 
   return (
@@ -180,7 +188,7 @@ export default function PermitCard({ permit, source, speView = false }) {
       overflow: 'hidden',
       boxShadow: 'var(--shadow-md)',
     }}>
-      <SignatureBanner permit={permit} />
+      <SignatureBanner permit={permit} onResult={r => setSigValid(r.valid)} />
 
       <div style={{
         background: cfg.bg,
