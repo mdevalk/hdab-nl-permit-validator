@@ -2,6 +2,10 @@
 // Falls back to the bundled public key when offline.
 
 import * as ed from '@noble/ed25519'
+import { sha512 } from '@noble/hashes/sha512'
+
+// Required by @noble/ed25519 v2 when crypto.subtle is unavailable or restricted.
+ed.etc.sha512Sync = (...m) => sha512(...m)
 
 const JWKS_URL       = 'https://raw.githubusercontent.com/mdevalk/hdab-nl-permit-generator/claude/amazing-dijkstra-fysn0n/.well-known/jwks.json'
 const JWKS_CACHE_KEY = 'hdab_jwks_cache'
