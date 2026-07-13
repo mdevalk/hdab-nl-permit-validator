@@ -2,24 +2,19 @@ import React, { useState } from 'react'
 import { User, Download, Share2 } from 'lucide-react'
 import PermitLookup from '../components/PermitLookup.jsx'
 import PermitCard from '../components/PermitCard.jsx'
+import SourceBadge from '../components/SourceBadge.jsx'
 
 export default function DataUserView() {
-  const [permit, setPermit] = useState(null)
-  const [source, setSource] = useState(null)
-
-  function handleResult(permit, src) {
-    setPermit(permit)
-    setSource(src)
-  }
+  const [state, setState] = useState({ permit: null, source: null })
 
   function handleExport() {
-    if (!permit) return
-    const json = JSON.stringify(permit, null, 2)
+    if (!state.permit) return
+    const json = JSON.stringify(state.permit, null, 2)
     const blob = new Blob([json], { type: 'application/json' })
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
     a.href     = url
-    a.download = `${permit.permitId}.json`
+    a.download = `${state.permit.permitId}.json`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -40,19 +35,25 @@ export default function DataUserView() {
       <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius)',
                     border: '1px solid var(--color-border)', padding: 20, marginBottom: 24,
                     boxShadow: 'var(--shadow)' }}>
-        <div style={{ fontWeight: 600, marginBottom: 12 }}>Enter your permit ID</div>
-        <PermitLookup onResult={handleResult} placeholder="Your permit ID (e.g. EHDB-2024-NL-00142)…" />
+        <div style={{ fontWeight: 600, marginBottom: 12 }}>Enter your permit ID or upload a file</div>
+        <PermitLookup
+          onResult={(permit, source) => setState({ permit, source })}
+          placeholder="Your permit ID (e.g. EHDB-2024-NL-00142)…"
+        />
       </div>
 
-      {permit && (
+      {state.permit && (
         <>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-            <ActionButton icon={Download} label="Export JSON" onClick={handleExport} />
-            <ActionButton icon={Share2} label="Copy permit ID" onClick={() => {
-              navigator.clipboard?.writeText(permit.permitId)
-            }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+            <SourceBadge source={state.source} />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <ActionButton icon={Download} label="Export JSON" onClick={handleExport} />
+              <ActionButton icon={Share2} label="Copy permit ID" onClick={() => {
+                navigator.clipboard?.writeText(state.permit.permitId)
+              }} />
+            </div>
           </div>
-          <PermitCard permit={permit} source={source} />
+          <PermitCard permit={state.permit} />
         </>
       )}
     </div>

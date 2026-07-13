@@ -1,16 +1,11 @@
 import React, { useState } from 'react'
-import { Database, CheckCircle, XCircle, AlertTriangle, Package, ArrowRight, Shield } from 'lucide-react'
+import { Database, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 import PermitLookup from '../components/PermitLookup.jsx'
 import PermitCard from '../components/PermitCard.jsx'
+import SourceBadge from '../components/SourceBadge.jsx'
 
 export default function DataHolderView() {
-  const [permit, setPermit] = useState(null)
-  const [source, setSource] = useState(null)
-
-  function handleResult(permit, src) {
-    setPermit(permit)
-    setSource(src)
-  }
+  const [state, setState] = useState({ permit: null, source: null })
 
   return (
     <div>
@@ -28,113 +23,28 @@ export default function DataHolderView() {
       <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius)',
                     border: '1px solid var(--color-border)', padding: 20, marginBottom: 24,
                     boxShadow: 'var(--shadow)' }}>
-        <div style={{ fontWeight: 600, marginBottom: 12 }}>Look up a permit</div>
-        <PermitLookup onResult={handleResult} placeholder="Enter permit ID provided by data user…" />
+        <div style={{ fontWeight: 600, marginBottom: 12 }}>Look up or upload a permit</div>
+        <PermitLookup
+          onResult={(permit, source) => setState({ permit, source })}
+          placeholder="Enter permit ID provided by data user…"
+        />
       </div>
 
-      {permit && (
+      {state.permit && (
         <>
-          <AccessDecision permit={permit} />
-          {permit.status === 'valid' && <DataDelivery permit={permit} />}
+          <AccessDecision permit={state.permit} />
           <div style={{ marginTop: 20 }}>
-            <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 13,
-                          color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Full Permit Details
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ fontWeight: 600, fontSize: 13,
+                            color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Full Permit Details
+              </div>
+              <SourceBadge source={state.source} />
             </div>
-            <PermitCard permit={permit} source={source} />
+            <PermitCard permit={state.permit} />
           </div>
         </>
       )}
-    </div>
-  )
-}
-
-function DataDelivery({ permit }) {
-  const spe = permit.speOperator
-
-  return (
-    <div style={{
-      background: 'var(--color-surface)',
-      border: '1.5px solid var(--color-border)',
-      borderRadius: 'var(--radius)',
-      marginTop: 16,
-      boxShadow: 'var(--shadow)',
-      overflow: 'hidden',
-    }}>
-      <div style={{
-        padding: '12px 20px',
-        background: '#f8faff',
-        borderBottom: '1px solid var(--color-border)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        fontWeight: 700,
-        fontSize: 13,
-      }}>
-        <Package size={15} color="var(--color-holder)" />
-        Data Delivery Instructions
-      </div>
-
-      <div style={{ padding: 20 }}>
-        <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Datasets to deliver
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-          {permit.datasets.map(ds => (
-            <div key={ds.id} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '10px 14px',
-              background: 'var(--color-bg)',
-              borderRadius: 8,
-              border: '1px solid var(--color-border)',
-            }}>
-              <Package size={14} color="var(--color-holder)" style={{ flexShrink: 0 }} />
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{ds.name}</div>
-                <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--color-text-muted)', marginTop: 1 }}>{ds.id}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <ArrowRight size={15} color="var(--color-text-muted)" />
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Deliver to
-          </div>
-        </div>
-
-        <div style={{
-          padding: '14px 16px',
-          background: 'var(--color-bg)',
-          borderRadius: 8,
-          border: '1.5px solid var(--color-spe)',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 12,
-        }}>
-          <Shield size={18} color="var(--color-spe)" style={{ flexShrink: 0, marginTop: 1 }} />
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{spe.name}</div>
-            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>
-              Org ID: <span style={{ fontFamily: 'monospace' }}>{spe.organizationId}</span>
-            </div>
-            {spe.speType && (
-              <span style={{
-                display: 'inline-block',
-                background: '#ede9fe',
-                color: 'var(--color-spe)',
-                fontSize: 11,
-                fontWeight: 600,
-                padding: '2px 8px',
-                borderRadius: 20,
-              }}>
-                {spe.speType}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

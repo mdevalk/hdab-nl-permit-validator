@@ -7,7 +7,7 @@ export default function PermitLookup({ onResult, placeholder = 'Enter permit IDâ
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [showExamples, setShowExamples] = useState(false)
-  const fileInputRef = useRef(null)
+  const fileRef = useRef(null)
   const examples = getMockPermitIds()
 
   async function handleSubmit(e) {
@@ -21,7 +21,7 @@ export default function PermitLookup({ onResult, placeholder = 'Enter permit IDâ
         setError(`No permit found for ID "${value.trim()}"`)
         onResult(null, null)
       } else {
-        onResult(result.permit, { type: 'registry' })
+        onResult(result.permit, 'lookup')
       }
     } catch {
       setError('Lookup failed. Please try again.')
@@ -30,24 +30,23 @@ export default function PermitLookup({ onResult, placeholder = 'Enter permit IDâ
     }
   }
 
-  function handleFileChange(e) {
+  function handleFileUpload(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    setError(null)
     const reader = new FileReader()
-    reader.onload = (evt) => {
+    reader.onload = (ev) => {
       try {
-        const permit = JSON.parse(evt.target.result)
-        if (!permit.permitId) throw new Error('Missing permitId field')
-        onResult(permit, { type: 'file', filename: file.name })
-        setValue('')
+        const permit = JSON.parse(ev.target.result)
+        if (!permit.permitId) throw new Error('Missing permitId')
+        setValue(permit.permitId)
+        setError(null)
+        onResult(permit, 'upload')
       } catch {
-        setError('Could not parse permit file. Expected a JSON file with a permitId field.')
+        setError('Invalid permit file â€” must be a valid EHDB permit JSON with a permitId field.')
         onResult(null, null)
       }
     }
     reader.readAsText(file)
-    // Reset so the same file can be re-selected
     e.target.value = ''
   }
 
@@ -96,21 +95,28 @@ export default function PermitLookup({ onResult, placeholder = 'Enter permit IDâ
           <Search size={15} />
           {loading ? 'Looking upâ€¦' : 'Validate'}
         </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".json,application/json"
+          style={{ display: 'none' }}
+          onChange={handleFileUpload}
+        />
         <button
           type="button"
-          title="Load permit from JSON file"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => fileRef.current?.click()}
+          title="Upload a permit JSON file"
           style={{
-            border: '1.5px solid var(--color-border)',
-            background: 'var(--color-surface)',
-            color: 'var(--color-text)',
-            padding: '10px 14px',
-            borderRadius: 8,
-            fontSize: 14,
-            fontWeight: 600,
             display: 'flex',
             alignItems: 'center',
             gap: 6,
+            padding: '10px 14px',
+            borderRadius: 8,
+            border: '1.5px solid var(--color-border)',
+            background: 'var(--color-surface)',
+            fontSize: 14,
+            fontWeight: 600,
+            color: 'var(--color-text)',
             transition: 'background 0.15s',
           }}
           onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
@@ -119,13 +125,6 @@ export default function PermitLookup({ onResult, placeholder = 'Enter permit IDâ
           <Upload size={15} />
           Upload
         </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json"
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-        />
       </form>
 
       <button
@@ -156,7 +155,7 @@ export default function PermitLookup({ onResult, placeholder = 'Enter permit IDâ
               onMouseEnter={e => e.currentTarget.style.background = 'var(--color-border)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              {id} <span style={{ color: 'var(--color-text-muted)', fontFamily: 'inherit' }}>â€” {status}</span>
+              {id} <span style={{ color: 'var(--color-text-muted)', fontFamily: 'inherit' }}>&mdash; {status}</span>
             </button>
           ))}
         </div>
