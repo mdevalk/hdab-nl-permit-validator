@@ -4,7 +4,7 @@ This file provides context for AI-assisted development on this repository.
 
 ## Project Purpose
 
-This is the official permit verification tool for the European Health Data Space (EHDS). It allows the three parties in a health data access workflow to independently verify the authenticity and validity of a digital data access permit issued by a Health Data Access Body (HDAB):
+An open-source, community-driven desktop application for verifying EHDS health data access permits issued by Health Data Access Bodies (HDABs). It allows the three parties in a health data access workflow to independently verify the authenticity and validity of a digital data access permit.
 
 | Role | Use |
 |---|---|
