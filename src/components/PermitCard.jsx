@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { CheckCircle, XCircle, AlertTriangle, Building2, User, Shield, FileText, Tag, BadgeCheck, ShieldAlert, Loader, Ban, Globe, FolderOpen } from 'lucide-react'
-import { verifySignature, checkRevocation } from '../services/permitService.js'
+import { CheckCircle, XCircle, AlertTriangle, Building2, User, Shield, FileText, Tag, BadgeCheck, ShieldAlert, Loader, Globe, FolderOpen } from 'lucide-react'
+import { verifySignature, deriveStatus, getRevocationInfo } from '../services/permitService.js'
 
 const STATUS_CONFIG = {
   valid:   { icon: CheckCircle,   color: 'var(--color-valid)',   bg: 'var(--color-valid-bg)',   label: 'Valid' },
@@ -117,42 +117,6 @@ function SignatureBanner({ permit, onResult }) {
   )
 }
 
-function RevocationBanner({ permit }) {
-  const [state, setState] = useState({ loading: true })
-
-  useEffect(() => {
-    setState({ loading: true })
-    checkRevocation(permit).then(result => setState({ loading: false, ...result }))
-  }, [permit.permitId])
-
-  if (state.loading) {
-    return <CheckRow loading loadingText="Checking revocation registry…" />
-  }
-
-  const { revoked } = state
-  return (
-    <CheckRow
-      icon={Ban}
-      iconColor='var(--color-revoked)'
-      bg='#fff5f5'
-      borderColor='var(--color-revoked)'
-      left={
-        <>
-          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-revoked)', marginBottom: 2 }}>
-            Permit revoked in HDAB registry
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-            {revoked
-              ? `Revoked ${new Date(state.revokedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} · ${state.reason}`
-              : ''
-            }
-          </div>
-        </>
-      }
-    />
-  )
-}
-
 function SourceBadge({ source }) {
   if (!source) return null
   const isFile = source.type === 'file'
@@ -175,8 +139,9 @@ function SourceBadge({ source }) {
 export default function PermitCard({ permit, source, speView = false }) {
   const [sigValid, setSigValid] = useState(null)
 
-  // When the signature is invalid, treat the permit as forged regardless of its status field.
-  const effectiveStatus = sigValid === false ? 'forged' : permit.status
+  const derived = deriveStatus(permit)
+  const revInfo = derived === 'revoked' ? getRevocationInfo(permit.permitId) : null
+  const effectiveStatus = sigValid === false ? 'forged' : derived
   const cfg = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.expired
   const StatusIcon = cfg.icon
 
@@ -213,7 +178,9 @@ export default function PermitCard({ permit, source, speView = false }) {
           {source && <div style={{ marginBottom: 6 }}><SourceBadge source={source} /></div>}
           <div>Issued: {formatDate(permit.issuedAt)}</div>
           <div>Expires: {formatDate(permit.expiresAt)}</div>
-          {permit.revokedAt && <div style={{ color: cfg.color, fontWeight: 600 }}>Revoked: {formatDate(permit.revokedAt)}</div>}
+          {revInfo && (
+            <div style={{ color: cfg.color, fontWeight: 600 }}>Revoked: {formatDate(revInfo.revokedAt)}</div>
+          )}
         </div>
       </div>
 

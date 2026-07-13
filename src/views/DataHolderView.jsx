@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Database, CheckCircle, XCircle, AlertTriangle, Package, ArrowRight, Shield } from 'lucide-react'
 import PermitLookup from '../components/PermitLookup.jsx'
 import PermitCard from '../components/PermitCard.jsx'
+import { deriveStatus, getRevocationInfo } from '../services/permitService.js'
 
 export default function DataHolderView() {
   const [permit, setPermit] = useState(null)
@@ -32,19 +33,22 @@ export default function DataHolderView() {
         <PermitLookup onResult={handleResult} placeholder="Enter permit ID provided by data user…" />
       </div>
 
-      {permit && (
-        <>
-          <AccessDecision permit={permit} />
-          {permit.status === 'valid' && <DataDelivery permit={permit} />}
-          <div style={{ marginTop: 20 }}>
-            <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 13,
-                          color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Full Permit Details
+      {permit && (() => {
+        const status = deriveStatus(permit)
+        return (
+          <>
+            <AccessDecision permit={permit} status={status} />
+            {status === 'valid' && <DataDelivery permit={permit} />}
+            <div style={{ marginTop: 20 }}>
+              <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 13,
+                            color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Full Permit Details
+              </div>
+              <PermitCard permit={permit} source={source} />
             </div>
-            <PermitCard permit={permit} source={source} />
-          </div>
-        </>
-      )}
+          </>
+        )
+      })()}
     </div>
   )
 }
@@ -139,9 +143,11 @@ function DataDelivery({ permit }) {
   )
 }
 
-function AccessDecision({ permit }) {
-  const isValid   = permit.status === 'valid'
-  const isRevoked = permit.status === 'revoked'
+function AccessDecision({ permit, status }) {
+  const revInfo = status === 'revoked' ? getRevocationInfo(permit.permitId) : null
+
+  const isValid   = status === 'valid'
+  const isRevoked = status === 'revoked'
 
   const Icon  = isValid ? CheckCircle : isRevoked ? XCircle : AlertTriangle
   const color = isValid ? 'var(--color-valid)' : isRevoked ? 'var(--color-revoked)' : 'var(--color-expired)'
@@ -154,9 +160,9 @@ function AccessDecision({ permit }) {
     : 'Access must be denied — permit expired'
 
   const detail = isValid
-    ? 'This permit is currently valid. Verify that your dataset is listed under "Permitted Datasets" before granting access.'
-    : isRevoked
-    ? `This permit was revoked on ${new Date(permit.revokedAt).toLocaleDateString('en-GB')}. Reason: ${permit.revocationReason}`
+    ? 'This permit is currently valid. Verify that your dataset is listed under “Permitted Datasets” before granting access.'
+    : isRevoked && revInfo
+    ? `This permit was revoked on ${new Date(revInfo.revokedAt).toLocaleDateString('en-GB')}. Reason: ${revInfo.reason}`
     : `This permit expired on ${new Date(permit.expiresAt).toLocaleDateString('en-GB')}. The data user must apply for a renewal.`
 
   return (

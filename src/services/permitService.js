@@ -33,14 +33,24 @@ const HDAB_ISSUERS = {
   },
 }
 
+// Revocation is tracked server-side; the permit document itself carries no status.
+const REVOCATION_REGISTRY = {
+  'EHDS-2024-NL-00201': {
+    revokedAt: '2024-11-10T14:22:00Z',
+    reason: 'Data user failed to comply with output checking procedures',
+  },
+}
+
 const MOCK_PERMITS = [
   {
     permitId: 'EHDS-2024-NL-00142',
-    status: 'valid',
     issuedAt: '2024-03-01T09:00:00Z',
     expiresAt: '2026-03-01T09:00:00Z',
     issuer: {
       authorityId: 'HDAB-NL',
+      name: 'Health Data Access Body — Netherlands',
+      country: 'NL',
+      organizationId: 'NL-OIN-00000000008765432000',
       kid: 'hdab-nl-signing-key-2025-v1',
       algorithm: 'Ed25519',
       signature: '7QZ6Hhs0lKFy3ocnJhSpOFdpVnabR3Ls5zFtRzgcDCV_EGIiQuONdTOLIX0-q9nmF4LvUqtcZm7btA-_FNfhDA',
@@ -57,15 +67,16 @@ const MOCK_PERMITS = [
       'No re-identification of natural persons permitted',
       'Results must be reviewed by HDAB before publication',
     ],
-    permitDocument: 'HDAB-NL-PERMIT-2024-00142.pdf',
   },
   {
     permitId: 'EHDS-2023-NL-00089',
-    status: 'expired',
     issuedAt: '2023-01-15T10:30:00Z',
     expiresAt: '2025-01-15T10:30:00Z',
     issuer: {
       authorityId: 'HDAB-NL',
+      name: 'Health Data Access Body — Netherlands',
+      country: 'NL',
+      organizationId: 'NL-OIN-00000000008765432000',
       kid: 'hdab-nl-signing-key-2025-v1',
       algorithm: 'Ed25519',
       signature: 'omwz2EoZHRgtFBPRuV9qUnlcK3977smKtrL5TfhvV2cXgjABe090VMzm-K4nsXW6UlicYXUqeQ__nbanAj5MDg',
@@ -81,17 +92,16 @@ const MOCK_PERMITS = [
       'Data must be processed within the designated SPE only',
       'Minimum cell size of 10 for all output tables',
     ],
-    permitDocument: 'HDAB-NL-PERMIT-2023-00089.pdf',
   },
   {
     permitId: 'EHDS-2024-NL-00201',
-    status: 'revoked',
     issuedAt: '2024-06-01T08:00:00Z',
     expiresAt: '2026-06-01T08:00:00Z',
-    revokedAt: '2024-11-10T14:22:00Z',
-    revocationReason: 'Data user failed to comply with output checking procedures',
     issuer: {
       authorityId: 'HDAB-NL',
+      name: 'Health Data Access Body — Netherlands',
+      country: 'NL',
+      organizationId: 'NL-OIN-00000000008765432000',
       kid: 'hdab-nl-signing-key-2025-v1',
       algorithm: 'Ed25519',
       signature: 'HB_BjrsIE5fkT4lXebmd2zEVRNgORzn_gGPEzD_S7DKXL2zfUw6RVowj6t9BdgW2nbiT-ZTessMEyMu4iwqIDQ',
@@ -104,9 +114,19 @@ const MOCK_PERMITS = [
     dataCategories: ['GP prescription records', 'Diagnosis codes'],
     datasets: [{ id: 'LINH-DS-RX-2022', name: 'GP Prescription Network Dataset 2018–2023' }],
     conditions: ['Data must be processed within the designated SPE only'],
-    permitDocument: 'HDAB-NL-PERMIT-2024-00201.pdf',
   },
 ]
+
+// Derive the effective status from expiry date and the revocation registry.
+export function deriveStatus(permit) {
+  if (REVOCATION_REGISTRY[permit.permitId]) return 'revoked'
+  if (new Date(permit.expiresAt) < new Date()) return 'expired'
+  return 'valid'
+}
+
+export function getRevocationInfo(permitId) {
+  return REVOCATION_REGISTRY[permitId] || null
+}
 
 // The fields that are covered by the signature — must match the generator exactly.
 function canonicalPayload(permit) {
@@ -175,9 +195,8 @@ export async function verifySignature(permit) {
 
 export async function checkRevocation(permit) {
   await new Promise(r => setTimeout(r, 300))
-  if (permit.status === 'revoked') {
-    return { revoked: true, revokedAt: permit.revokedAt, reason: permit.revocationReason }
-  }
+  const info = REVOCATION_REGISTRY[permit.permitId]
+  if (info) return { revoked: true, revokedAt: info.revokedAt, reason: info.reason }
   return { revoked: false }
 }
 
@@ -203,5 +222,5 @@ export function getStatusLabel(status) {
 }
 
 export function getMockPermitIds() {
-  return MOCK_PERMITS.map(p => ({ id: p.permitId, status: p.status }))
+  return MOCK_PERMITS.map(p => ({ id: p.permitId, status: deriveStatus(p) }))
 }
