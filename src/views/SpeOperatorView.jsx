@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { Shield, CheckCircle, XCircle, AlertTriangle, Upload, X } from 'lucide-react'
-import { getMockPermitIds, lookupPermit } from '../services/permitService.js'
+import { getMockPermitIds, lookupPermit, deriveStatus } from '../services/permitService.js'
 import PermitCard from '../components/PermitCard.jsx'
 
 const STATUS_ICON = {
@@ -38,7 +38,6 @@ export default function SpeOperatorView() {
         const permit = JSON.parse(evt.target.result)
         if (!permit.permitId) throw new Error('Missing permitId')
         const source = { type: 'file', filename: file.name }
-        // Replace if same ID already exists, otherwise prepend
         setPermits(prev => {
           const exists = prev.some(p => p.permit.permitId === permit.permitId)
           if (exists) return prev.map(p => p.permit.permitId === permit.permitId ? { permit, source } : p)
@@ -54,11 +53,13 @@ export default function SpeOperatorView() {
     e.target.value = ''
   }
 
-  const allPermits = permits.map(p => p.permit)
   const counts = { valid: 0, expired: 0, revoked: 0 }
-  allPermits.forEach(p => { if (counts[p.status] !== undefined) counts[p.status]++ })
+  permits.forEach(({ permit }) => {
+    const s = deriveStatus(permit)
+    if (counts[s] !== undefined) counts[s]++
+  })
 
-  const filtered = filter === 'all' ? permits : permits.filter(p => p.permit.status === filter)
+  const filtered = filter === 'all' ? permits : permits.filter(({ permit }) => deriveStatus(permit) === filter)
 
   return (
     <div>
@@ -138,7 +139,8 @@ export default function SpeOperatorView() {
         <div style={{ display: 'grid', gap: 10, gridTemplateColumns: selected ? '280px 1fr' : '1fr', alignItems: 'start' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {filtered.map(({ permit: p, source }) => {
-              const { icon: Icon, color } = STATUS_ICON[p.status] || STATUS_ICON.expired
+              const status = deriveStatus(p)
+              const { icon: Icon, color } = STATUS_ICON[status] || STATUS_ICON.expired
               const isSelected = selected?.permitId === p.permitId
               return (
                 <button
