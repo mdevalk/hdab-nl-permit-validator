@@ -1,78 +1,58 @@
-# CLAUDE.md — HDAB-NL Permit Validator
+# CLAUDE.md
 
-This file provides context for AI-assisted development on this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Purpose
+## Commands
 
-An open-source, community-driven desktop application for verifying EHDS health data access permits issued by Health Data Access Bodies (HDABs). It allows the three parties in a health data access workflow to independently verify the authenticity and validity of a digital data access permit.
+```bash
+npm run dev          # start Vite dev server + Electron (hot reload)
+npm run build        # production build for current platform
+npm run build:win    # Windows (NSIS + MSI)
+npm run build:mac    # macOS (DMG + PKG)
+npm run build:linux  # Linux (AppImage + DEB + RPM)
+```
 
-| Role | Use |
-|---|---|
-| **SPE Operator** | Verify a permit before granting access to the Secure Processing Environment |
-| **Data Holder** | Confirm a valid permit before preparing and delivering datasets |
-| **Data User** | Check permit status, conditions, and legal basis for their own access request |
+### First-time setup (npm blocks install scripts by default)
 
-## Regulatory Framework
+```bash
+npm install
+npm approve-scripts electron esbuild fsevents
+npm install
+```
 
-### EHDS Regulation
+## Architecture
 
-**Regulation (EU) 2025/327** of the European Parliament and of the Council on the European Health Data Space.
+Electron shell (`electron/main.cjs`) wraps a React + Vite SPA (`src/`). In dev, Electron loads `http://localhost:5173`; in production it loads `dist/index.html`. DevTools open automatically in dev mode. Use `HashRouter` (not `BrowserRouter`) — Electron's `file://` protocol does not support history-based routing.
 
-Key articles for this project:
+### Role-based routing
 
-| Article | Subject |
-|---|---|
-| Art. 53(1) | Permitted purposes for secondary use of health data |
-| Art. 67 | Health data access applications |
-| Art. 68 | Granting of data permits; requirements and conditions |
-| Art. 69 | Access to data in anonymised statistical format |
-| Art. 70 | Implementing acts (application form, permit template) |
-| Art. 71 | Right to opt out |
-| Art. 72 | Trusted data holders |
-| Art. 73 | Cross-border data access |
+`App.jsx` manages a `role` state (`'spe' | 'holder' | 'user'`). When no role is selected, `RoleSelector` is shown full-screen. Once selected, `AppShell` wraps the active view and routing redirects to `/spe`, `/holder`, or `/user`. Role is reset (and route navigated to `/`) when the user switches roles via the shell header.
 
-Full text: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=OJ:L_202500327
+### Permit data flow
 
-### TEHDAS2 Guidelines
+All permit operations go through `src/services/permitService.js`:
 
-TEHDAS2 (Towards the European Health Data Space, Joint Action 2) provides operational guidance for HDABs implementing the EHDS regulation.
+- **`lookupPermit(id)`** — simulates a registry fetch (600 ms delay); returns a permit object or `{ found: false }`
+- **`verifySignature(permit)`** — real Ed25519 verification via `@noble/ed25519`. Fetches the HDAB JWKS endpoint, caches keys in `localStorage` for 1 hour, falls back to the bundled key (`BUNDLED_PUBLIC_KEY`) if offline
+- **`deriveStatus(permit)`** — the canonical status source. Checks `REVOCATION_REGISTRY` first, then compares `expiresAt` to now. **Never read status from the permit JSON itself** — permits do not carry a `status` field
+- **`getRevocationInfo(permitId)`** — returns `{ revokedAt, reason }` from `REVOCATION_REGISTRY` or `null`
 
-| Document | Description | URL |
-|---|---|---|
-| **D6.3** | Guideline for HDABs on procedures and formats for data access. Contains **Annex 9** (data permit template) and **Annex 10** (data request approval template). Primary reference for the digital permit schema. | https://tehdas.eu/wp-content/uploads/2025/09/draft-guideline-for-health-data-access-bodies-on-the-procedures-and-formats-for-data-access.pdf |
-| **M6.1** | Guideline for health data holders on making personal and non-personal electronic health data available for reuse | https://tehdas.eu/wp-content/uploads/2025/09/draft-guideline-for-health-data-holders-on-making-personal-and-non-personal-electronic-health-data-available-for-reuse.pdf |
-| **M6.2** | Draft guideline for data users on good application and access practice | https://tehdas.eu/wp-content/uploads/2025/01/2025-01-20-tehdas2-milestone-6.2.pdf |
-| **D7.1** | Guideline on how to use data in a secure processing environment | https://tehdas.eu/wp-content/uploads/2025/07/d7.1-guideline-on-how-to-use-data-in-a-secure-processing-environment.pdf |
+### Canonical payload for signing
 
-## Digital Permit Schema
+Only these fields are signed (must match the generator exactly): `permitId`, `issuedAt`, `expiresAt`, `issuerKid`, `dataUser`, `dataHolder`, `speOperator`, `purpose`, `legalBasis`, `dataCategories`, `datasets`, `conditions`. Fields outside this set (`status`, `revokedAt`, etc.) are intentionally excluded and must not be added to the permit schema.
 
-The permit schema is maintained in the generator repository: `mdevalk/hdab-nl-permit-generator` — `schema/permit.schema.json` (JSON Schema draft 2020-12).
+### Source tracking
 
-### Permit Status
+When a permit is loaded (from registry lookup or file upload), a `source` object `{ type: 'registry' | 'file', filename?: string }` is passed alongside it as the second argument to `onResult(permit, source)`. Views store both and pass `source` as a prop to `PermitCard`, which renders a `SourceBadge` internally.
 
-Permit validity status is **derived at runtime** — it is not embedded in the signed document:
+### PermitCard
 
-| Status | Condition |
-|---|---|
-| `valid` | Signature valid, not expired, not revoked |
-| `expired` | `expiresAt` is in the past |
-| `revoked` | Present in the revocation registry |
-| `forged` | Ed25519 signature verification fails |
+`PermitCard` is self-contained: it runs `verifySignature` internally via `SignatureBanner` and derives status via `deriveStatus`. If the signature is invalid, `effectiveStatus` is overridden to `'forged'` regardless of the derived status. The `speView` prop swaps the Conditions section for a Requested SPE Type section (used in `SpeOperatorView`).
 
-## Cryptographic Verification
+### Styling
 
-- Algorithm: **Ed25519** via `@noble/ed25519` (pure JS, no Web Crypto API dependency)
-- Public keys fetched from issuer JWKS endpoint, cached in `localStorage` for 1 hour
-- JWKS URL: `https://raw.githubusercontent.com/mdevalk/hdab-nl-permit-generator/main/.well-known/jwks.json`
-- Bundled fallback key used if JWKS fetch fails (offline use)
-- Canonical payload verified: `permitId`, `issuedAt`, `expiresAt`, `issuerKid`, `dataUser`, `dataHolder`, `speOperator`, `purpose`, `legalBasis`, `dataCategories`, `datasets`, `conditions`
+All styling is inline React styles using CSS custom properties defined in `src/styles/`. No CSS modules or Tailwind. Role accent colours: `--color-spe` (purple), `--color-holder` (blue), `--color-user` (teal).
 
-## Tech Stack
+## Permit schema
 
-| Layer | Technology |
-|---|---|
-| Shell | Electron 33 |
-| UI | React 18 + Vite 6 |
-| Crypto | @noble/ed25519 + @noble/hashes |
-| Packaging | electron-builder |
-| Dev port | 5173 (generator uses 5174) |
+`schema/permit.schema.json` (JSON Schema draft 2020-12) is the source of truth for what a valid permit document looks like. `additionalProperties: false` is set throughout — keep the schema and the mock data in `permitService.js` in sync when adding fields.
