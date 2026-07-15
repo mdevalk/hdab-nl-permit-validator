@@ -81,28 +81,6 @@ Never read status from the permit JSON. Never add a `status` field to the permit
 
 ---
 
-## Dev Commands
-
-```bash
-npm run dev          # Vite dev server + Electron with hot reload
-npm run build        # production build for current platform
-npm run build:win    # Windows (NSIS + MSI)
-npm run build:mac    # macOS (DMG + PKG)
-npm run build:linux  # Linux (AppImage + DEB + RPM)
-```
-
-### First-time setup
-
-Recent npm versions block install scripts by default. Run this once per machine:
-
-```bash
-npm install
-npm approve-scripts electron esbuild fsevents
-npm install
-```
-
----
-
 ## Architecture
 
 Electron shell (`electron/main.cjs`) wraps a React + Vite SPA. In dev, Electron loads `http://localhost:5173`; in production it loads `dist/index.html`. Uses `HashRouter` — Electron's `file://` protocol does not support history-based routing.
