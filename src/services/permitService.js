@@ -1,5 +1,9 @@
-// Real Ed25519 verification against the HDAB-NL JWKS endpoint.
-// Falls back to the bundled public key when offline.
+// Real Ed25519 verification against the open-daams public signing key.
+// open-daams has no public deployment yet, so the primary source is a static
+// JWKS file committed to its repo (fetched via raw.githubusercontent.com);
+// the bundled key below is the offline fallback.
+// TODO: once open-daams is deployed somewhere reachable, point JWKS_URL at
+// its live `/.well-known/jwks.json` route instead.
 
 import * as ed from '@noble/ed25519'
 import { sha512 } from '@noble/hashes/sha512'
@@ -7,120 +11,109 @@ import { sha512 } from '@noble/hashes/sha512'
 // Required by @noble/ed25519 v2 when crypto.subtle is unavailable or restricted.
 ed.etc.sha512Sync = (...m) => sha512(...m)
 
-const JWKS_URL       = 'https://raw.githubusercontent.com/mdevalk/hdab-nl-permit-generator/main/.well-known/jwks.json'
+const JWKS_URL       = 'https://raw.githubusercontent.com/mdevalk/open-daams/main/public/jwks/jwks.json'
 const JWKS_CACHE_KEY = 'hdab_jwks_cache'
 const JWKS_CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
 const BUNDLED_PUBLIC_KEY = {
-  kty: 'OKP', crv: 'Ed25519', alg: 'Ed25519',
-  kid: 'hdab-nl-signing-key-2025-v1', use: 'sig',
-  ext: true, key_ops: ['verify'],
-  x: 'Oob343RfMvsZmcqTtSd3KOom-KrpLp6yRm86K2sh_aQ',
+  kty: 'OKP', crv: 'Ed25519', kid: 'open-daams-nl-signing-key-2026-v1',
+  use: 'sig', alg: 'EdDSA',
+  x: 'JOu9hHNvuFFi0kwtgrPCXQ1OzqUMF8KwQPHO93uvVXs',
 }
 
+// open-daams is a single-tenant reference implementation for a fictional
+// "HDAB-NL" — issuer identity is looked up locally by kid, not trusted from
+// the permit document itself.
 const HDAB_ISSUERS = {
-  'HDAB-NL': {
-    name: 'Health Data Access Body — Netherlands',
+  'open-daams-nl-signing-key-2026-v1': {
+    name: 'Health Data Access Body Nederland (HDAB-NL)',
     country: 'NL',
-    organizationId: 'NL-OIN-00000000008765432000',
-    kid: 'hdab-nl-signing-key-2025-v1',
-  },
-  'HDAB-DE': {
-    name: 'Gesundheitsdatenzugangsorganisation — Deutschland',
-    country: 'DE',
-    organizationId: 'DE-HRB-00000000-HDAB',
-    kid: 'hdab-de-signing-key-2025-v1',
   },
 }
 
-// Revocation is tracked server-side; the permit document itself carries no status.
+// Revocation is tracked server-side; the permit document's own status/
+// revocationAt fields are informational only and are never trusted here —
+// status is always re-derived below.
 const REVOCATION_REGISTRY = {
-  'EHDS-2024-NL-00201': {
-    revokedAt: '2024-11-10T14:22:00Z',
+  'DP-NL-2025-0201': {
+    revokedAt: '2026-05-10T14:22:00Z',
     reason: 'Data user failed to comply with output checking procedures',
   },
 }
 
+// The full, human-readable permit id combines the stable base number with
+// the version, e.g. "DP-NL-2025-0142-v2". Version 1 shows the bare number.
+function formatPermitId(permitNumber, version) {
+  return version > 1 ? `${permitNumber}-v${version}` : permitNumber
+}
+
+function buildMockPermit({ permitNumber, version, applicationId, issuedAt, validFrom, validUntil, grantedDatasets, status, revocationReason, revocationAt, signature }) {
+  return {
+    permitNumber, version, applicationId,
+    issuedAt, validFrom, validUntil, grantedDatasets,
+    issuerKid: 'open-daams-nl-signing-key-2026-v1',
+    permitId: formatPermitId(permitNumber, version),
+    status, revocationReason, revocationAt,
+    signature,
+    signingKeyId: 'open-daams-nl-signing-key-2026-v1',
+    algorithm: 'Ed25519',
+  }
+}
+
 const MOCK_PERMITS = [
-  {
-    permitId: 'EHDS-2024-NL-00142',
-    issuedAt: '2024-03-01T09:00:00Z',
-    expiresAt: '2026-03-01T09:00:00Z',
-    issuer: {
-      authorityId: 'HDAB-NL',
-      name: 'Health Data Access Body — Netherlands',
-      country: 'NL',
-      organizationId: 'NL-OIN-00000000008765432000',
-      kid: 'hdab-nl-signing-key-2025-v1',
-      algorithm: 'Ed25519',
-      signature: '7QZ6Hhs0lKFy3ocnJhSpOFdpVnabR3Ls5zFtRzgcDCV_EGIiQuONdTOLIX0-q9nmF4LvUqtcZm7btA-_FNfhDA',
-    },
-    dataUser:    { name: 'Amsterdam UMC Research Institute', organizationId: 'NL-KVK-34375365', country: 'NL' },
-    dataHolder:  { name: 'RIVM National Institute for Public Health', organizationId: 'NL-OIN-00000000003214345000', country: 'NL' },
-    speOperator: { name: 'CBS Secure Processing Environment', organizationId: 'NL-OIN-00000000001234567000', speType: 'Remote Access SPE' },
-    purpose: 'Scientific research — cardiovascular disease epidemiology',
-    legalBasis: 'EHDS Article 54(1)(a)',
-    dataCategories: ['Electronic health records', 'Medical imaging data', 'Genomic data (aggregated)'],
-    datasets: [{ id: 'RIVM-DS-2019-CVD', name: 'Cardiovascular Disease Registry 2010–2023' }],
-    conditions: [
-      'Data must be processed within the designated SPE only',
-      'No re-identification of natural persons permitted',
-      'Results must be reviewed by HDAB before publication',
+  buildMockPermit({
+    permitNumber: 'DP-NL-2025-0142',
+    version: 2,
+    applicationId: 'clx1a9f3k0007le08qr2mzp1',
+    issuedAt: '2025-09-01T09:00:00.000Z',
+    validFrom: '2025-09-01T09:00:00.000Z',
+    validUntil: '2027-09-01T09:00:00.000Z',
+    grantedDatasets: [
+      { dataHolderName: 'RIVM', datasets: [{ name: 'Landelijke Basisregistratie Ziekenhuiszorg (LBZ) — ontslagdiagnoses', url: null }] },
+      { dataHolderName: 'GP Information Network (LINH)', datasets: [{ name: 'Medicatievoorschriften huisartsenpraktijken (ATC A10)', url: null }] },
     ],
-  },
-  {
-    permitId: 'EHDS-2023-NL-00089',
-    issuedAt: '2023-01-15T10:30:00Z',
-    expiresAt: '2025-01-15T10:30:00Z',
-    issuer: {
-      authorityId: 'HDAB-NL',
-      name: 'Health Data Access Body — Netherlands',
-      country: 'NL',
-      organizationId: 'NL-OIN-00000000008765432000',
-      kid: 'hdab-nl-signing-key-2025-v1',
-      algorithm: 'Ed25519',
-      signature: 'omwz2EoZHRgtFBPRuV9qUnlcK3977smKtrL5TfhvV2cXgjABe090VMzm-K4nsXW6UlicYXUqeQ__nbanAj5MDg',
-    },
-    dataUser:    { name: 'Erasmus MC Epidemiology Dept.', organizationId: 'NL-KVK-24312402', country: 'NL' },
-    dataHolder:  { name: 'Dutch Hospital Data (DHD)', organizationId: 'NL-OIN-00000000005678901000', country: 'NL' },
-    speOperator: { name: 'CBS Secure Processing Environment', organizationId: 'NL-OIN-00000000001234567000', speType: 'On-site SPE' },
-    purpose: 'Scientific research — oncology outcomes after surgical intervention',
-    legalBasis: 'EHDS Article 54(1)(a)',
-    dataCategories: ['Hospital discharge data', 'Surgical procedure records'],
-    datasets: [{ id: 'DHD-DS-ONCO-2021', name: 'National Oncology Surgery Registry' }],
-    conditions: [
-      'Data must be processed within the designated SPE only',
-      'Minimum cell size of 10 for all output tables',
+    status: 'AMENDED',
+    revocationReason: null,
+    revocationAt: null,
+    signature: 't7jGje4fsvQs9_HDjj7CgYGbhvks60tHO5vaLUXu7f-OtfY4RRO6S9GD7XyReYmU7sd0odi_B2ZlqKEeX-vjCg',
+  }),
+  buildMockPermit({
+    permitNumber: 'DP-NL-2024-0089',
+    version: 1,
+    applicationId: 'clx1a9f3k0007le08qr2abcd',
+    issuedAt: '2024-01-15T10:30:00.000Z',
+    validFrom: '2024-01-15T10:30:00.000Z',
+    validUntil: '2025-01-15T10:30:00.000Z',
+    grantedDatasets: [
+      { dataHolderName: 'RIVM', datasets: [{ name: 'Praeventis — landelijke vaccinatieregistratie', url: null }] },
     ],
-  },
-  {
-    permitId: 'EHDS-2024-NL-00201',
-    issuedAt: '2024-06-01T08:00:00Z',
-    expiresAt: '2026-06-01T08:00:00Z',
-    issuer: {
-      authorityId: 'HDAB-NL',
-      name: 'Health Data Access Body — Netherlands',
-      country: 'NL',
-      organizationId: 'NL-OIN-00000000008765432000',
-      kid: 'hdab-nl-signing-key-2025-v1',
-      algorithm: 'Ed25519',
-      signature: 'HB_BjrsIE5fkT4lXebmd2zEVRNgORzn_gGPEzD_S7DKXL2zfUw6RVowj6t9BdgW2nbiT-ZTessMEyMu4iwqIDQ',
-    },
-    dataUser:    { name: 'Pharma Research BV', organizationId: 'NL-KVK-87654321', country: 'NL' },
-    dataHolder:  { name: 'GP Information Network (LINH)', organizationId: 'NL-OIN-00000000009988776000', country: 'NL' },
-    speOperator: { name: 'CBS Secure Processing Environment', organizationId: 'NL-OIN-00000000001234567000', speType: 'Remote Access SPE' },
-    purpose: 'Commercial research — drug utilization patterns',
-    legalBasis: 'EHDS Article 54(1)(b)',
-    dataCategories: ['GP prescription records', 'Diagnosis codes'],
-    datasets: [{ id: 'LINH-DS-RX-2022', name: 'GP Prescription Network Dataset 2018–2023' }],
-    conditions: ['Data must be processed within the designated SPE only'],
-  },
+    status: 'EXPIRED',
+    revocationReason: null,
+    revocationAt: null,
+    signature: 'lNpplb6KyRGkTefVME5toPMf5vql5_Hth2lkUNoY-5wE99cZUPilXY2WclDoJuGWagOmUU3_HPzB2SADfYnUBA',
+  }),
+  buildMockPermit({
+    permitNumber: 'DP-NL-2025-0201',
+    version: 1,
+    applicationId: 'clx1a9f3k0007le08qr2efgh',
+    issuedAt: '2025-06-01T08:00:00.000Z',
+    validFrom: '2025-06-01T08:00:00.000Z',
+    validUntil: '2027-06-01T08:00:00.000Z',
+    grantedDatasets: [
+      { dataHolderName: 'Vektis', datasets: [{ name: 'Declaraties geestelijke gezondheidszorg (GGZ)', url: null }] },
+    ],
+    status: 'REVOKED',
+    revocationReason: 'Data user failed to comply with output checking procedures',
+    revocationAt: '2026-05-10T14:22:00Z',
+    signature: 'Kqag3foGX6XgMgK0eGXudPouXUEezHPlrfdxipgBucJRiJ4ad797pDSTySAosXRzYsBqHz-vf1RzaUkr5onYDw',
+  }),
 ]
 
-// Derive the effective status from expiry date and the revocation registry.
+// Derive the effective status from validity dates and the local revocation
+// registry. The permit document's own `status` field is never read here.
 export function deriveStatus(permit) {
   if (REVOCATION_REGISTRY[permit.permitId]) return 'revoked'
-  if (new Date(permit.expiresAt) < new Date()) return 'expired'
+  if (new Date(permit.validUntil) < new Date()) return 'expired'
   return 'valid'
 }
 
@@ -128,22 +121,38 @@ export function getRevocationInfo(permitId) {
   return REVOCATION_REGISTRY[permitId] || null
 }
 
-// The fields that are covered by the signature — must match the generator exactly.
+// The fixed subset of fields covered by the signature — must match
+// open-daams's `canonicalPermitPayload` (src/lib/permit-signing.ts) exactly.
+// Gotcha: open-daams derives issuedAt/validFrom/validUntil via
+// `date.toISOString()`, which always includes millisecond precision
+// (".000Z", not "Z") — a permit object with second-precision timestamps
+// will fail verification even though the signature itself is correct.
 function canonicalPayload(permit) {
   return {
-    permitId:       permit.permitId,
-    issuedAt:       permit.issuedAt,
-    expiresAt:      permit.expiresAt,
-    issuerKid:      permit.issuer.kid,
-    dataUser:       permit.dataUser,
-    dataHolder:     permit.dataHolder,
-    speOperator:    permit.speOperator,
-    purpose:        permit.purpose,
-    legalBasis:     permit.legalBasis,
-    dataCategories: permit.dataCategories,
-    datasets:       permit.datasets,
-    conditions:     permit.conditions,
+    permitNumber:     permit.permitNumber,
+    version:          permit.version,
+    applicationId:    permit.applicationId,
+    issuedAt:         permit.issuedAt,
+    validFrom:        permit.validFrom,
+    validUntil:       permit.validUntil,
+    grantedDatasets:  permit.grantedDatasets,
+    issuerKid:        permit.issuerKid,
   }
+}
+
+// Deterministic JSON: recursively sort object keys before stringifying, so
+// the signed bytes never depend on property order. Must match open-daams's
+// own stableStringify exactly — that's what actually produced the signature,
+// not the field order this object literal happens to be written in.
+function stableStringify(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(',')}]`
+  }
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`).join(',')}}`
+  }
+  return JSON.stringify(value)
 }
 
 function fromBase64Url(b64) {
@@ -171,25 +180,25 @@ async function fetchJwks() {
 export async function verifySignature(permit) {
   await new Promise(r => setTimeout(r, 200))
 
-  const issuerInfo = HDAB_ISSUERS[permit.issuer?.authorityId]
+  const issuerInfo = HDAB_ISSUERS[permit.signingKeyId]
 
-  if (!permit.issuer?.signature) {
-    return { valid: false, issuer: issuerInfo || null, kid: permit.issuer?.kid || null, algorithm: 'Ed25519' }
+  if (!permit.signature || !permit.signingKeyId) {
+    return { valid: false, issuer: issuerInfo || null, kid: permit.signingKeyId || null, algorithm: 'Ed25519' }
   }
 
   try {
     const keys   = await fetchJwks()
-    const keyJwk = keys.find(k => k.kid === permit.issuer.kid)
-    if (!keyJwk) return { valid: false, issuer: issuerInfo || null, kid: permit.issuer.kid, algorithm: 'Ed25519' }
+    const keyJwk = keys.find(k => k.kid === permit.signingKeyId)
+    if (!keyJwk) return { valid: false, issuer: issuerInfo || null, kid: permit.signingKeyId, algorithm: 'Ed25519' }
 
     const publicKeyBytes = fromBase64Url(keyJwk.x)
-    const encoded        = new TextEncoder().encode(JSON.stringify(canonicalPayload(permit)))
-    const sigBytes       = fromBase64Url(permit.issuer.signature)
-    const valid          = await ed.verify(sigBytes, encoded, publicKeyBytes)
+    const encoded         = new TextEncoder().encode(stableStringify(canonicalPayload(permit)))
+    const sigBytes         = fromBase64Url(permit.signature)
+    const valid            = await ed.verify(sigBytes, encoded, publicKeyBytes)
 
     return { valid, issuer: issuerInfo || null, kid: keyJwk.kid, algorithm: 'Ed25519' }
   } catch {
-    return { valid: false, issuer: issuerInfo || null, kid: permit.issuer?.kid, algorithm: 'Ed25519' }
+    return { valid: false, issuer: issuerInfo || null, kid: permit.signingKeyId, algorithm: 'Ed25519' }
   }
 }
 
@@ -200,8 +209,8 @@ export async function checkRevocation(permit) {
   return { revoked: false }
 }
 
-export function getIssuerInfo(authorityId) {
-  return HDAB_ISSUERS[authorityId] || null
+export function getIssuerInfo(kid) {
+  return HDAB_ISSUERS[kid] || null
 }
 
 export async function lookupPermit(permitId) {
