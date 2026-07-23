@@ -1,27 +1,17 @@
 import React, { useState } from 'react'
-import { User, Download, Share2 } from 'lucide-react'
+import { User, Eye } from 'lucide-react'
 import PermitLookup from '../components/PermitLookup.jsx'
 import PermitCard from '../components/PermitCard.jsx'
 
 export default function DataUserView() {
   const [permit, setPermit] = useState(null)
   const [source, setSource] = useState(null)
+  const [showJson, setShowJson] = useState(false)
 
   function handleResult(permit, src) {
     setPermit(permit)
     setSource(src)
-  }
-
-  function handleExport() {
-    if (!permit) return
-    const json = JSON.stringify(permit, null, 2)
-    const blob = new Blob([json], { type: 'application/json' })
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href     = url
-    a.download = `${permit.permitId}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    setShowJson(false)
   }
 
   return (
@@ -32,8 +22,8 @@ export default function DataUserView() {
           <h2 style={{ fontSize: 20, fontWeight: 700 }}>Data User — My Permit</h2>
         </div>
         <p style={{ color: 'var(--color-text-muted)', maxWidth: 580 }}>
-          View your EHDB permit details, check its current status, and export or share it
-          when presenting to data holders or SPE operators.
+          View your EHDB permit details, check its current status, and inspect the
+          underlying signed JSON when presenting to data holders or SPE operators.
         </p>
       </div>
 
@@ -41,17 +31,27 @@ export default function DataUserView() {
                     border: '1px solid var(--color-border)', padding: 20, marginBottom: 24,
                     boxShadow: 'var(--shadow)' }}>
         <div style={{ fontWeight: 600, marginBottom: 12 }}>Enter your permit ID</div>
-        <PermitLookup onResult={handleResult} placeholder="Your permit ID (e.g. EHDB-2024-NL-00142)…" />
+        <PermitLookup onResult={handleResult} placeholder="Your permit ID (e.g. DP-NL-2025-0142)…" />
       </div>
 
       {permit && (
         <>
           <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-            <ActionButton icon={Download} label="Export JSON" onClick={handleExport} />
-            <ActionButton icon={Share2} label="Copy permit ID" onClick={() => {
-              navigator.clipboard?.writeText(permit.permitId)
-            }} />
+            <ActionButton
+              icon={Eye}
+              label={showJson ? 'Hide JSON' : 'View JSON'}
+              onClick={() => setShowJson(v => !v)}
+            />
           </div>
+          {showJson && (
+            <pre style={{
+              background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius)', padding: 16, marginBottom: 16,
+              fontSize: 12, fontFamily: 'monospace', overflowX: 'auto',
+            }}>
+              {JSON.stringify(permit, null, 2)}
+            </pre>
+          )}
           <PermitCard permit={permit} source={source} />
         </>
       )}
