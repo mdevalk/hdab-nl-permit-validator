@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { CheckCircle, XCircle, AlertTriangle, Building2, User, Shield, FileText, Tag, BadgeCheck, ShieldAlert, Loader, Globe, FolderOpen } from 'lucide-react'
+import { CheckCircle, XCircle, AlertTriangle, FileText, Building2, BadgeCheck, ShieldAlert, Loader, Globe, FolderOpen } from 'lucide-react'
 import { verifySignature, deriveStatus, getRevocationInfo } from '../services/permitService.js'
 
 const STATUS_CONFIG = {
@@ -98,7 +98,7 @@ function SignatureBanner({ permit, onResult }) {
               {' '}
               <span style={{ background: valid ? 'var(--color-valid)' : 'var(--color-revoked)', color: '#fff',
                              fontSize: 11, fontWeight: 600, padding: '1px 7px', borderRadius: 20 }}>
-                {permit.issuer?.authorityId}
+                {issuer.country}
               </span>
             </div>
           ) : (
@@ -110,7 +110,6 @@ function SignatureBanner({ permit, onResult }) {
         <>
           <div><strong>kid:</strong> {state.kid}</div>
           <div><strong>alg:</strong> {state.algorithm}</div>
-          <div><strong>Org ID:</strong> {issuer.organizationId}</div>
         </>
       )}
     />
@@ -136,7 +135,7 @@ function SourceBadge({ source }) {
   )
 }
 
-export default function PermitCard({ permit, source, speView = false }) {
+export default function PermitCard({ permit, source }) {
   const [sigValid, setSigValid] = useState(null)
 
   const derived = deriveStatus(permit)
@@ -176,8 +175,8 @@ export default function PermitCard({ permit, source, speView = false }) {
         </div>
         <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--color-text-muted)' }}>
           {source && <div style={{ marginBottom: 6 }}><SourceBadge source={source} /></div>}
-          <div>Issued: {formatDate(permit.issuedAt)}</div>
-          <div>Expires: {formatDate(permit.expiresAt)}</div>
+          <div>Valid from: {formatDate(permit.validFrom)}</div>
+          <div>Valid until: {formatDate(permit.validUntil)}</div>
           {revInfo && (
             <div style={{ color: cfg.color, fontWeight: 600 }}>Revoked: {formatDate(revInfo.revokedAt)}</div>
           )}
@@ -185,65 +184,33 @@ export default function PermitCard({ permit, source, speView = false }) {
       </div>
 
       <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 32px' }}>
-        <Section title="Data User" icon={User}>
-          <Field label="Name"    value={permit.dataUser.name} />
-          <Field label="Org ID"  value={permit.dataUser.organizationId} />
-          <Field label="Country" value={permit.dataUser.country} />
+        <Section title="Permit" icon={FileText}>
+          <Field label="Permit number" value={permit.permitNumber} />
+          <Field label="Version"       value={permit.version} />
+          <Field label="Application"   value={permit.applicationId} />
         </Section>
 
-        <Section title="Data Holder" icon={Building2}>
-          <Field label="Name"    value={permit.dataHolder.name} />
-          <Field label="Org ID"  value={permit.dataHolder.organizationId} />
-          <Field label="Country" value={permit.dataHolder.country} />
-        </Section>
-
-        <Section title="SPE Operator" icon={Shield}>
-          <Field label="Name"     value={permit.speOperator.name} />
-          <Field label="Org ID"   value={permit.speOperator.organizationId} />
-          <Field label="SPE Type" value={permit.speOperator.speType || '—'} />
-        </Section>
-
-        <Section title="Legal Basis" icon={FileText}>
-          <Field label="Purpose"     value={permit.purpose} />
-          <Field label="Legal basis" value={permit.legalBasis} />
-        </Section>
+        {revInfo && (
+          <Section title="Revocation" icon={AlertTriangle}>
+            <Field label="Revoked"  value={formatDate(revInfo.revokedAt)} />
+            <Field label="Reason"   value={revInfo.reason} />
+          </Section>
+        )}
       </div>
 
       <div style={{ padding: '0 20px 20px' }}>
-        <Section title="Data Categories" icon={Tag}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {permit.dataCategories.map(cat => (
-              <span key={cat} style={{
-                background: 'var(--color-bg)', border: '1px solid var(--color-border)',
-                borderRadius: 20, padding: '3px 10px', fontSize: 12,
-              }}>
-                {cat}
-              </span>
-            ))}
-          </div>
-        </Section>
-
-        <Section title="Permitted Datasets" icon={FileText}>
-          {permit.datasets.map(ds => (
-            <div key={ds.id} style={{ marginBottom: 4 }}>
-              <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--color-text-muted)' }}>{ds.id}</span>
-              {' '}
-              <span style={{ fontSize: 13 }}>{ds.name}</span>
+        <Section title="Granted Datasets" icon={Building2}>
+          {permit.grantedDatasets.map(group => (
+            <div key={group.dataHolderName} style={{ marginBottom: 10 }}>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 3 }}>{group.dataHolderName}</div>
+              {group.datasets.map(ds => (
+                <div key={ds.name} style={{ fontSize: 13, color: 'var(--color-text)', paddingLeft: 10 }}>
+                  {ds.url ? <a href={ds.url} target="_blank" rel="noreferrer">{ds.name}</a> : ds.name}
+                </div>
+              ))}
             </div>
           ))}
         </Section>
-
-        {speView ? (
-          <Section title="Requested SPE Type" icon={Shield}>
-            <Field label="SPE type" value={permit.speOperator.speType || '—'} />
-          </Section>
-        ) : (
-          <Section title="Conditions" icon={AlertTriangle}>
-            <ol style={{ paddingLeft: 18, fontSize: 13, lineHeight: 1.7, color: 'var(--color-text)' }}>
-              {permit.conditions.map((c, i) => <li key={i}>{c}</li>)}
-            </ol>
-          </Section>
-        )}
       </div>
     </div>
   )

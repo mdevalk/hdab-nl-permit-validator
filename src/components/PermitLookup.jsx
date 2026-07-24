@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { Search, ChevronDown, Upload } from 'lucide-react'
 import { lookupPermit, getMockPermitIds } from '../services/permitService.js'
+import { extractPermitJsonFromPdf } from '../lib/pdfAttachment.js'
 
 export default function PermitLookup({ onResult, placeholder = 'Enter permit IDâ€¦' }) {
   const [value, setValue] = useState('')
@@ -30,23 +31,24 @@ export default function PermitLookup({ onResult, placeholder = 'Enter permit IDâ
     }
   }
 
-  function handleFileChange(e) {
+  async function handleFileChange(e) {
     const file = e.target.files?.[0]
     if (!file) return
     setError(null)
-    const reader = new FileReader()
-    reader.onload = (evt) => {
-      try {
-        const permit = JSON.parse(evt.target.result)
-        if (!permit.permitId) throw new Error('Missing permitId field')
-        onResult(permit, { type: 'file', filename: file.name })
-        setValue('')
-      } catch {
-        setError('Could not parse permit file. Expected a JSON file with a permitId field.')
-        onResult(null, null)
-      }
+    const isPdf = file.name.toLowerCase().endsWith('.pdf')
+    try {
+      const permit = isPdf
+        ? await extractPermitJsonFromPdf(await file.arrayBuffer())
+        : JSON.parse(await file.text())
+      if (!permit.permitId) throw new Error('Missing permitId field')
+      onResult(permit, { type: 'file', filename: file.name })
+      setValue('')
+    } catch (err) {
+      setError(isPdf
+        ? (err?.message || 'Could not read the digital permit embedded in this PDF.')
+        : 'Could not parse permit file. Expected a JSON file with a permitId field.')
+      onResult(null, null)
     }
-    reader.readAsText(file)
     // Reset so the same file can be re-selected
     e.target.value = ''
   }
@@ -98,7 +100,7 @@ export default function PermitLookup({ onResult, placeholder = 'Enter permit IDâ
         </button>
         <button
           type="button"
-          title="Load permit from JSON file"
+          title="Load permit from a JSON file or an open-daams issued PDF"
           onClick={() => fileInputRef.current?.click()}
           style={{
             border: '1.5px solid var(--color-border)',
@@ -122,7 +124,7 @@ export default function PermitLookup({ onResult, placeholder = 'Enter permit IDâ
         <input
           ref={fileInputRef}
           type="file"
-          accept=".json"
+          accept=".json,.pdf"
           style={{ display: 'none' }}
           onChange={handleFileChange}
         />

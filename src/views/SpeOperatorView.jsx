@@ -172,8 +172,7 @@ export default function SpeOperatorView() {
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 2 }}>{p.dataUser.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>↳ {p.dataHolder.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Application: {p.applicationId}</div>
                 </button>
               )
             })}
@@ -187,7 +186,7 @@ export default function SpeOperatorView() {
                             color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Permit Details
               </div>
-              <PermitCard permit={selected} source={selectedSource} speView />
+              <PermitCard permit={selected} source={selectedSource} />
             </div>
           )}
         </div>

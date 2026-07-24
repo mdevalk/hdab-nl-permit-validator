@@ -22,32 +22,54 @@
       "electron/**/*"
     ],
     "win": {
-      "target": ["nsis", "msi"]
+      "target": [
+        "nsis",
+        "msi"
+      ]
     },
     "mac": {
-      "target": ["dmg", "pkg"]
+      "target": [
+        "dmg",
+        "pkg"
+      ]
     },
     "linux": {
-      "target": ["AppImage", "deb", "rpm"]
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm"
+      ]
     }
   },
-  "keywords": ["EHDS", "EHDB", "HDAB", "permit", "validator"],
+  "keywords": [
+    "EHDS",
+    "EHDB",
+    "HDAB",
+    "permit",
+    "validator"
+  ],
   "author": "HDAB NL",
   "license": "MIT",
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
     "concurrently": "^9.1.0",
-    "electron": "^33.2.0",
-    "electron-builder": "^25.1.8",
+    "electron": "^43.1.0",
+    "electron-builder": "^26.15.3",
     "vite": "^6.0.3",
     "wait-on": "^8.0.1"
   },
   "dependencies": {
     "@noble/ed25519": "^2.1.0",
     "@noble/hashes": "^1.7.2",
+    "lucide-react": "^0.468.0",
+    "pdfjs-dist": "^6.1.200",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.0.2",
-    "lucide-react": "^0.468.0"
+    "react-router-dom": "^7.0.2"
+  },
+  "allowScripts": {
+    "electron@33.4.11": true,
+    "esbuild@0.25.12": true,
+    "fsevents@2.3.3": true
   }
 }
